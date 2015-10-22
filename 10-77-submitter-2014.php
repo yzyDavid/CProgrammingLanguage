@@ -13,7 +13,7 @@
  **/
 $tmp_path = '/tmp/';    // must with a suffix slash ('/')
 $tmp_file = tempnam($tmp_path, "SEN_CP_TMP");
-$server_host = "10.77.30.138";
+$server_host = "10.77.30.139";
 $server = "http://$server_host/";
 if ($argc == 1) {
     echo "Usage: ./submitter.php YOUR_USER_ID [YOUR_PASSWORD]\n";
@@ -34,7 +34,7 @@ echo "CProgramming Submitter by Senorsen - sen@senorsen.com\n";
 echo "Please see the LICENSE.\n";
 $login_ret = login($stuid, $passwd);
 getannounce($login_ret);
-$classes = getclass($login_ret);
+$classes = getclass();
 echo "\n";
 echo "+---------------------------------------------+\n";
 foreach ($classes as $key => $value) {
@@ -54,7 +54,7 @@ foreach ($classes as $key => $value) {
     }
     sleep(2);
     foreach ($lianxis as $kk => $vv) {
-        echo "Try practice $kk-$vv->id:\n";
+        echo "Try practice $kk-$vv->id ($vv->no) :\n";
         sleep(0.5);
         $problemset = getproblemset($vv->id);
         $nas = array();
@@ -212,20 +212,23 @@ function getproblemset($id)
         sleeptogether();
         return FALSE;
     } else {
-        preg_match_all('/<td align=center>(\d+)/', $ret, $matches_number);
-        preg_match_all('/<a style="text-decoration: none" href="show_problem.php\?cid=\d+\&pid=\d+\&pno=\d+">([\s\S]+?)<\/a>/', $ret, $matches_title);
-        preg_match_all('/<a style="text-decoration: none" href="(show_problem.php\?cid=\d+\&pid=\d+\&pno=\d+)">/', $ret, $matches_link);
+        preg_match_all('/<td align=center >(\d+)/', $ret, $matches_number);
+        preg_match_all('/<td align=center>(\d+)/', $ret, $matches_score);
+        preg_match_all('/<a.+?href="show_problem.php\?cid=\d+\&pid=\d+\&pno=\d+\&lang=\d+">([\s\S]+?)<\/a><\/td>/', $ret, $matches_title);
+        preg_match_all('/<a.+?href="(show_problem.php\?cid=\d+\&pid=\d+\&pno=\d+\&lang=\d+)">/', $ret, $matches_link);
         $matches_number = $matches_number[1];
+        $matches_score = $matches_score[1];
         $matches_title = $matches_title[1];
         $matches_link = $matches_link[1];
         $problems = array();
         $i = 0;
         $j = 0;
+        var_dump($matches_score);
         foreach ($matches_number as $key => $value) {
             $key = intval($key);
-            if ($i % 2 == 0) {
-                $problems[$j++] = (object)array('id' => intval($value), 'score' => intval($matches_number[$key + 1]));
-            }
+            $row = (object)array('id' => intval($value), 'score' => @intval($matches_score[$key]));
+            $problems[$j++] = $row;
+
             $i++;
         }
         $i = 0;
@@ -244,11 +247,10 @@ function getproblemset($id)
 function getlianxi($id)
 {
     global $server;
-    $data = "c_choose=$id&Submit=submit";
-    curlf('student/studentchoose.php', $data, 1);
-    $data = 'choose=lianxi&B1=%CC%E1%BD%BB';
-    $ret = curlf('student/contestchoose.php', $data, 1);
-    if (!preg_match('/请选择考试\/练习场次/', $ret)) {
+    $data = "c_choose=$id&submit1=submit";
+    $ret = curlf('student/contestchoose.php?et=1', $data, 1);
+    if (!preg_match('/训练场次列表/', $ret)) {
+        echo $ret;
         echo "Error: Cannot get practices.\n";
         echo "If this problem persists, please contact me.\n";
         sleeptogether();
@@ -289,7 +291,7 @@ function getannounce($str)
     $ret = curlf('student/teacherannounce.php?userid=' . $stuid, null, 1);
     // echo "LENGTH" . strlen($ret);
     // 105 is empty
-    if (strlen($ret) != 105) {
+    if (strlen($ret) <= 85) {
         echo "***ATTENTION***: You have some announcement in the website.\n";
         echo "If you think this important, please have a look \n";
         echo "     at the C Programming Practice website.\n";
@@ -297,23 +299,22 @@ function getannounce($str)
     }
 }
 
-function getclass($str)
+function getclass()
 {
+    $str = curlf('student/studentfirst.php?et=1', null, 1);
     $classes = array();
     preg_match_all('/<div align="center">(.*?)<\/div>/', $str, $matches);
     for ($i = 0; $i < 5; $i++) {
         unset($matches[1][$i]);
     }
-    foreach ($matches[1] as $key => $value) {
-        $key = intval($key);
-        if (preg_match('/<input type="radio" name="c_choose"value="(\d+)">/', $value, $vmatches)) {
-            array_push($classes, (object)array(
-                'id' => $matches[1][$key + 1],
-                'no' => $matches[1][$key + 2],
-                'name' => $matches[1][$key + 3],
-                'teacher' => $matches[1][$key + 4]
-            ));
-        }
+    foreach ($matches as $key => $value) {
+        if ($key == 0) continue;
+        array_push($classes, (object)array(
+            'id' => $value[6],
+            'no' => $value[7],
+            'name' => $value[8],
+            'teacher' => $value[9],
+        ));
     }
     return $classes;
 }
@@ -335,9 +336,10 @@ function login($stuid, $passwd)
         exit(2);
     } else {
         echo " ... [ok]\n";
-        if (preg_match('/欢迎使用上机测试系统/', $ret)) {
+        if (preg_match('/frameborder="NO" name="topFrame"/', $ret)) {
             // 登录成功
-            preg_match('/欢迎使用上机测试系统&nbsp;&nbsp;  (\d+)&nbsp;&nbsp;(.+?)</', $ret, $matches);
+            $topstu = curlf('student/topstu.php', null, 1);
+            preg_match('/.+?(\w+)\[(.+?)\]<\/b> 您好,感谢登陆使用！/', $topstu, $matches);
             echo "Login success! $matches[1] - $matches[2] \n";
             file_put_contents($tmp_file, file_get_contents($tmp_file) . "$server_host\tFALSE\t/\tFALSE\t0\tuser_id\t$stuid\n");
             return $ret;
