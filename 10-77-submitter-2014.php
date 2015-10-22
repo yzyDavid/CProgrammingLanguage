@@ -223,7 +223,6 @@ function getproblemset($id)
         $problems = array();
         $i = 0;
         $j = 0;
-        var_dump($matches_score);
         foreach ($matches_number as $key => $value) {
             $key = intval($key);
             $row = (object)array('id' => intval($value), 'score' => @intval($matches_score[$key]));
