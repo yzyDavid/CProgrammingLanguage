@@ -82,30 +82,30 @@ foreach ($classes as $key => $value) {
             echo ".\n";
             $src_flag = 0;
             ready_for_upload:
-            if (!file_exists($vvv->id . '/' . $vvv->id . '.c')) {
+            if (!file_exists('CProgrammingLanguage-BHH-ZJU/' . $vvv->id . '/' . $vvv->id . '.c')) {
                 $src_flag = 1;
-                @mkdir($vvv->id);
+                @mkdir('CProgrammingLanguage-BHH-ZJU/' . $vvv->id);
                 $desc_searches = array('/\)\{/', "/\\)\n\\{/", '/"stdio\.h"/');
                 $desc_replaces = array(') {', ') {', '<stdio.h>');
                 $problem_desc = preg_replace($desc_searches, $desc_replaces, $problem_desc);
-                file_put_contents("$vvv->id/README.txt", $vvv->title . "\n\n" . $problem_desc . "\n");
+                file_put_contents("CProgrammingLanguage-BHH-ZJU/$vvv->id/README.txt", $vvv->title . "\n\n" . $problem_desc . "\n");
                 echo "Terrible >_< File not exist.\n";
                 echo "So you should solve this problem: (press Enter/Return key to see the problem)\n";
                 waitforret();
                 preg_match('/(\#include[\s\S]+)$/', $problem_desc, $matches_src);
                 $demo_src = $matches_src[1];
                 // Hey it should be 小森森/Senorsen's code style!!
-                file_put_contents("$vvv->id/{$vvv->id}_not_finished.c", $demo_src);
+                file_put_contents("CProgrammingLanguage-BHH-ZJU/$vvv->id/{$vvv->id}_not_finished.c", $demo_src);
                 echo $problem_desc . "\n";
-                echo "=v= When you finished this code at $vvv->id/{$vvv->id}_not_finished.c, \n";
+                echo "=v= When you finished this code at CProgrammingLanguage-BHH-ZJU/$vvv->id/{$vvv->id}_not_finished.c, \n";
                 echo "    Work hard to HIT your Enter/Return key!\n";
-                echo "Find $vvv->id/{$vvv->id}_not_finished.c, and it will be renamed automatically.\n";
+                echo "Find CProgrammingLanguage-BHH-ZJU/$vvv->id/{$vvv->id}_not_finished.c, and it will be renamed automatically.\n";
                 waitforret();
-                rename("$vvv->id/{$vvv->id}_not_finished.c", "$vvv->id/$vvv->id.c");
+                rename("CProgrammingLanguage-BHH-ZJU/$vvv->id/{$vvv->id}_not_finished.c", "CProgrammingLanguage-BHH-ZJU/$vvv->id/$vvv->id.c");
                 goto ready_for_upload;
             } else {
-                echo "Uploading $vvv->id/$vvv->id.c, please wait...\n";
-                if (FALSE == uploadsrc($vvv->id, "$vvv->id/$vvv->id.c")) {
+                echo "Uploading CProgrammingLanguage-BHH-ZJU/$vvv->id/$vvv->id.c, please wait...\n";
+                if (FALSE == uploadsrc($vvv->id, "CProgrammingLanguage-BHH-ZJU/$vvv->id/$vvv->id.c")) {
                     echo "Error: cannot upload. \n";
                     echo "fatal error.\n";
                     echo "If this problem persists, please contact me.\n";
@@ -132,7 +132,7 @@ foreach ($classes as $key => $value) {
                     }
                     echo "$vvv->id $vvv->title Solved, AC!!\n";
                     if ($p_file_copy) {
-                        copy("$vvv->id/$vvv->id.c", "homework_{$vv->id}_$stuid/$vvv->id.c");
+                        copy("CProgrammingLanguage-BHH-ZJU/$vvv->id/$vvv->id.c", "homework_{$vv->id}_$stuid/$vvv->id.c");
                     }
                     sleep(1);
                 }
@@ -167,13 +167,18 @@ function bye()
 
 function uploadsrc($prob_id, $file)
 {
+    $cfile = new CURLFile($file, 'application/octet-stream', "$prob_id.c");
     $data = array(
         'MAX_FILE_SIZE' => '81920000',
         'prob_id' => $prob_id,
-        'userfile' => '@' . __DIR__ . '/' . $file
+        'langn' => 0,
+        'flagn' => 1,
+        'sub1' => 'Senorsen',
+        'userfile' => $cfile,
     );
     $ret = curlf('student/submit_process.php', $data, 1);
-    if (preg_match('/解答已经提交，请稍等/', $ret)) {
+    echo $ret;
+    if (preg_match('/解答已经提交/', $ret)) {
         preg_match('/url=(.+?)"/', $ret, $matches);
         sleep(2);
         curlf('student/' . $matches[1], null, 1);
@@ -185,7 +190,8 @@ function uploadsrc($prob_id, $file)
 
 function getresult()
 {
-    $ret = curlf('student/status.php', null, 1);
+    $run_id = 0;
+    $ret = curlf("student/status.php?run_id=$run_id&lang=0&flag=1", null, 1);
     preg_match_all('/<td align=center(.+?)\/td>/', $ret, $matches);
     $arr = array('运行中', '运行超时', '编译错误', '运行完毕');
     foreach ($arr as $value) {
